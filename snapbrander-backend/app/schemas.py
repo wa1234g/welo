@@ -66,6 +66,15 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
+class ClientSiteCreate(BaseModel):
+    project_id: int
+    subdomain: Optional[str] = None
+    wp_admin_username: Optional[str] = "admin"
+    wp_admin_password: str
+    wp_admin_email: Optional[str] = None
+    site_title: Optional[str] = None
+    template_id: Optional[int] = None
+
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None

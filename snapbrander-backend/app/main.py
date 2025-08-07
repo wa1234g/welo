@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base, create_tables
-from .routers import auth, projects, templates, subscriptions, payments, ai_generator, notifications, wordpress, analytics, support, domains
+from .routers import auth, projects, templates, subscriptions, payments, ai_generator, notifications, wordpress, analytics, support, domains, cpanel, search
 from . import models
 import os
 
@@ -33,6 +33,8 @@ app.include_router(wordpress.router)
 app.include_router(analytics.router)
 app.include_router(support.router)
 app.include_router(domains.router)
+app.include_router(cpanel.router)
+app.include_router(search.router)
 
 @app.get("/healthz")
 async def healthz():

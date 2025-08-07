@@ -4,13 +4,35 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/DashboardLayout';
 import Link from 'next/link';
+import { fetchApi } from '@/utils/api';
+import { toast } from 'react-hot-toast';
+
+interface SearchResult {
+  id: number;
+  type: string;
+  title: string;
+  description: string;
+  url: string;
+  metadata?: any;
+  domain?: string;
+  created?: string;
+  status?: string;
+  category?: string;
+  price?: string;
+  role?: string;
+  joinDate?: string;
+  section?: string;
+  time?: string;
+  read?: boolean;
+}
 
 function SearchResults() {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const searchQuery = searchParams.get('q');
@@ -20,88 +42,36 @@ function SearchResults() {
     }
   }, [searchParams]);
 
-  const performSearch = async (searchQuery) => {
+  const performSearch = async (searchQuery: string) => {
     if (!searchQuery.trim()) return;
     
     setLoading(true);
+    setError('');
     
-    // محاكاة البحث في البيانات
-    const mockResults = [
-      {
-        id: 1,
-        type: 'project',
-        title: 'موقع شركة التقنية المتقدمة',
-        description: 'موقع شركة متخصصة في تطوير حلول التقنية المتقدمة',
-        url: '/my-projects/1',
-        domain: 'tech-company.fureraa.com',
-        created: '2024-01-15',
-        status: 'active'
-      },
-      {
-        id: 2,
-        type: 'project',
-        title: 'متجر الإلكترونيات',
-        description: 'متجر إلكتروني لبيع الأجهزة والإكسسوارات',
-        url: '/my-projects/2',
-        domain: 'electronics-store.fureraa.com',
-        created: '2024-01-10',
-        status: 'development'
-      },
-      {
-        id: 3,
-        type: 'template',
-        title: 'قالب الأعمال الحديث',
-        description: 'قالب احترافي للشركات والأعمال',
-        url: '/templates/modern-business',
-        category: 'أعمال',
-        price: 'مجاني'
-      },
-      {
-        id: 4,
-        type: 'user',
-        title: 'أحمد محمد علي',
-        description: 'مدير المشاريع في شركة التقنية المتقدمة',
-        url: '/users/1',
-        role: 'عميل',
-        joinDate: '2023-06-15'
-      },
-      {
-        id: 5,
-        type: 'page',
-        title: 'إعدادات النظام',
-        description: 'إدارة إعدادات المنصة والتكاملات',
-        url: '/settings',
-        section: 'إدارة'
-      },
-      {
-        id: 6,
-        type: 'notification',
-        title: 'تم إنشاء موقع جديد',
-        description: 'إشعار بإنجاز إنشاء موقع شركة التقنية المتقدمة',
-        url: '/notifications',
-        time: '2024-01-15 10:30:00',
-        read: false
+    try {
+      const response = await fetchApi(`/api/search/?q=${encodeURIComponent(searchQuery)}&type=${filter === 'all' ? '' : filter}`, {}, false);
+      
+      if (response.success) {
+        setResults(response.data.results);
+      } else {
+        setError('فشل في البحث');
+        toast.error('فشل في البحث');
       }
-    ];
-
-    // تصفية النتائج بناءً على البحث
-    const filteredResults = mockResults.filter(item =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    setTimeout(() => {
-      setResults(filteredResults);
+    } catch (err) {
+      setError('حدث خطأ أثناء البحث');
+      console.error('Search error:', err);
+      toast.error('حدث خطأ أثناء البحث');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     performSearch(query);
   };
 
-  const getTypeIcon = (type) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case 'project': return 'ri-global-line';
       case 'template': return 'ri-layout-line';
@@ -112,7 +82,7 @@ function SearchResults() {
     }
   };
 
-  const getTypeLabel = (type) => {
+  const getTypeLabel = (type: string) => {
     switch (type) {
       case 'project': return 'مشروع';
       case 'template': return 'قالب';
@@ -123,7 +93,7 @@ function SearchResults() {
     }
   };
 
-  const getTypeColor = (type) => {
+  const getTypeColor = (type: string) => {
     switch (type) {
       case 'project': return 'text-blue-400 bg-blue-500/20';
       case 'template': return 'text-green-400 bg-green-500/20';

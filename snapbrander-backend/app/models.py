@@ -65,6 +65,7 @@ class Project(Base):
     database_name = Column(String(255))
     database_user = Column(String(255))
     database_password = Column(String(255))
+    cpanel_subdomain = Column(String(255), nullable=True)
     ftp_username = Column(String(255))
     ftp_password = Column(String(255))
     ssl_status = Column(String(20), default="pending")

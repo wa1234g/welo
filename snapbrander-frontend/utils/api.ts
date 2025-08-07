@@ -13,12 +13,12 @@ export async function fetchApi(
   requiresAuth: boolean = true
 ): Promise<ApiResponse> {
   try {
-    const baseUrl = 'http://localhost:8000';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const url = `${baseUrl}${endpoint}`;
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
     
     if (requiresAuth) {
@@ -43,7 +43,9 @@ export async function fetchApi(
     return data;
   } catch (error: any) {
     console.error('API Error:', error);
-    toast.error(error.message || 'حدث خطأ في الاتصال بالخادم');
+    if (requiresAuth && error.message.includes('تسجيل الدخول')) {
+      toast.error(error.message);
+    }
     return {
       success: false,
       message: error.message || 'حدث خطأ في الاتصال بالخادم',
