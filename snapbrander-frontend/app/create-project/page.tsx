@@ -4,9 +4,22 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { fetchApi } from '../../utils/api';
+import { toast } from 'react-hot-toast';
+
+interface FormData {
+  name: string;
+  description: string;
+  category: string;
+  template: string;
+  domain: string;
+  hosting: string;
+  features: string[];
+}
 
 export default function CreateProject() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     category: '',
@@ -15,6 +28,8 @@ export default function CreateProject() {
     hosting: 'snapbrander',
     features: []
   });
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const categories = [
     { id: 'business', name: 'أعمال', icon: 'ri-briefcase-line' },
@@ -55,9 +70,64 @@ export default function CreateProject() {
     { id: 'maintenance', name: 'صيانة شهرية', icon: 'ri-tools-line' }
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('تم إنشاء المشروع بنجاح! سيتم إعادة توجيهك إلى صفحة المشروع');
+    
+    if (!formData.name || !formData.description || !formData.category || !formData.template) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetchApi('/api/projects/', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: formData.name,
+          description: formData.description,
+          business_type: formData.category,
+          template_id: parseInt(formData.template) || null,
+          domain: formData.domain || `${formData.name.toLowerCase().replace(/\s+/g, '-')}.snapbrander.com`,
+          settings: {
+            features: formData.features,
+            hosting: formData.hosting
+          }
+        })
+      });
+
+      if (response.success) {
+        toast.success('تم إنشاء المشروع بنجاح!');
+        
+        const projectId = response.data.id;
+        toast.loading('جاري تثبيت WordPress...', { duration: 3000 });
+        
+        const wpResponse = await fetchApi('/api/wordpress/install', {
+          method: 'POST',
+          body: JSON.stringify({
+            project_id: projectId,
+            domain: formData.domain || `${formData.name.toLowerCase().replace(/\s+/g, '-')}.snapbrander.com`,
+            admin_password: 'admin123456',
+            site_title: formData.name,
+            admin_username: 'admin'
+          })
+        });
+
+        if (wpResponse.success) {
+          toast.success('تم تثبيت WordPress بنجاح!');
+          router.push(`/my-projects/${projectId}`);
+        } else {
+          toast.error('تم إنشاء المشروع ولكن فشل في تثبيت WordPress');
+          router.push('/my-projects');
+        }
+      } else {
+        toast.error(response.message || 'فشل في إنشاء المشروع');
+      }
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast.error('حدث خطأ أثناء إنشاء المشروع');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -247,10 +317,20 @@ export default function CreateProject() {
             </Link>
             <button
               type="submit"
-              className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap"
+              disabled={loading}
+              className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <i className="ri-add-line"></i>
-              <span>إنشاء المشروع</span>
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>جاري الإنشاء...</span>
+                </>
+              ) : (
+                <>
+                  <i className="ri-add-line"></i>
+                  <span>إنشاء المشروع</span>
+                </>
+              )}
             </button>
           </div>
         </form>

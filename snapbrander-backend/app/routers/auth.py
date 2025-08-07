@@ -18,10 +18,19 @@ async def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     
     new_user = auth.create_user(db=db, user=user)
     
+    access_token = auth.create_access_token(data={"sub": new_user.email})
+    refresh_token = auth.create_refresh_token(data={"sub": new_user.email})
+    
+    token_data = schemas.Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer"
+    )
+    
     return schemas.APIResponse(
         success=True,
         message="User registered successfully",
-        data={"user_id": new_user.id, "email": new_user.email}
+        data=token_data.dict()
     )
 
 @router.post("/login", response_model=schemas.APIResponse)
