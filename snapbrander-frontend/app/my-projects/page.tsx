@@ -4,6 +4,8 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchApi } from '@/utils/api';
+import { toast } from 'react-hot-toast';
 
 export default function MyProjects() {
   const [filter, setFilter] = useState('all');
@@ -19,28 +21,10 @@ export default function MyProjects() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('access_token');
+      const response = await fetchApi('/api/projects/');
       
-      if (!token) {
-        setError('يجب تسجيل الدخول أولاً');
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch('http://localhost:8000/api/projects/', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('فشل في جلب المشاريع');
-      }
-
-      const data = await response.json();
-      if (data.success) {
-        setProjects(data.data.projects);
+      if (response.success) {
+        setProjects(response.data.projects);
       } else {
         setError('فشل في جلب المشاريع');
       }

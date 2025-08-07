@@ -1,74 +1,196 @@
 'use client';
 
 import DashboardLayout from '@/components/DashboardLayout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchApi } from '@/utils/api';
+import { toast } from 'react-hot-toast';
+
+interface Domain {
+  id: string;
+  domain_name: string;
+  status: string;
+  expires_at: string;
+  project_id: number;
+  project_name?: string;
+  auto_renew: boolean;
+  ssl_enabled?: boolean;
+  dns_managed?: boolean;
+}
+
+interface DomainSearchResult {
+  domain: string;
+  available: boolean;
+  price: number;
+  premium?: boolean;
+}
 
 export default function Domains() {
   const [activeTab, setActiveTab] = useState('search');
   const [domainSearch, setDomainSearch] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState<DomainSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [myDomains, setMyDomains] = useState<Domain[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [projects, setProjects] = useState<any[]>([]);
 
-  const myDomains = [
-    {
-      id: 1,
-      domain: 'mycompany.com',
-      status: 'active',
-      expiresAt: '2025-01-15',
-      registrar: 'Hostinger',
-      connectedProject: 'موقع الشركة الرئيسي',
-      autoRenew: true,
-      price: 120
-    },
-    {
-      id: 2,
-      domain: 'techblog.net',
-      status: 'pending',
-      expiresAt: '2024-12-30',
-      registrar: 'Hostinger',
-      connectedProject: null,
-      autoRenew: false,
-      price: 95
+  useEffect(() => {
+    fetchUserDomains();
+    fetchUserProjects();
+  }, []);
+
+  const fetchUserDomains = async () => {
+    try {
+      setLoading(true);
+      const response = await fetchApi('/api/domains/');
+      
+      if (response.success) {
+        setMyDomains(response.data.domains);
+      } else {
+        setError('فشل في جلب النطاقات');
+      }
+    } catch (err) {
+      setError('حدث خطأ في الاتصال بالخادم');
+      console.error('Error fetching domains:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const fetchUserProjects = async () => {
+    try {
+      const response = await fetchApi('/api/projects/');
+      
+      if (response.success) {
+        setProjects(response.data.projects);
+      }
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+    }
+  };
 
   const handleDomainSearch = async () => {
     if (!domainSearch.trim()) return;
     
     setIsSearching(true);
-    // محاكاة البحث عبر Hostinger API
-    setTimeout(() => {
-      const extensions = ['.com', '.net', '.org', '.sa', '.ae', '.eg'];
-      const results = extensions.map(ext => ({
-        domain: `${domainSearch}${ext}`,
-        available: Math.random() > 0.4,
-        price: Math.floor(Math.random() * 100) + 50,
-        premium: Math.random() > 0.8
-      }));
-      setSearchResults(results);
+    try {
+      const response = await fetchApi(`/api/domains/available?domain=${domainSearch}`);
+
+      if (response.success) {
+        const results = [
+          {
+            domain: response.data.domain,
+            available: response.data.available,
+            price: response.data.price,
+            premium: false
+          }
+        ];
+
+        if (response.data.suggestions && response.data.suggestions.length > 0) {
+          response.data.suggestions.forEach((suggestion: string) => {
+            results.push({
+              domain: suggestion,
+              available: true,
+              price: response.data.price,
+              premium: false
+            });
+          });
+        }
+
+        setSearchResults(results);
+      } else {
+        toast.error('فشل في البحث عن النطاق');
+      }
+    } catch (err) {
+      console.error('Error searching domain:', err);
+      toast.error('حدث خطأ أثناء البحث عن النطاق');
+    } finally {
       setIsSearching(false);
-    }, 2000);
+    }
   };
 
-  const handleDomainPurchase = (domain) => {
-    alert(`سيتم تحويلك لصفحة الدفع لحجز النطاق: ${domain}`);
+  const handleDomainPurchase = async (domain: string) => {
+    try {
+      if (projects.length === 0) {
+        toast.error('يجب إنشاء مشروع أولاً قبل حجز النطاق');
+        return;
+      }
+
+      const projectId = projects[0].id;
+
+      const response = await fetchApi('/api/domains/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          domain: domain,
+          project_id: projectId,
+          auto_renew: true
+        })
+      });
+
+      if (response.success) {
+        toast.success(`تم حجز النطاق ${domain} بنجاح!`);
+        fetchUserDomains(); // Refresh the domains list
+        setActiveTab('my-domains'); // Switch to my domains tab
+      } else {
+        toast.error('فشل في حجز النطاق');
+      }
+    } catch (err) {
+      console.error('Error purchasing domain:', err);
+      toast.error('حدث خطأ أثناء حجز النطاق');
+    }
   };
 
-  const getStatusColor = (status) => {
+  const handleConnectDomain = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+    const domainId = formData.get('selectedDomain') as string;
+    const projectId = formData.get('selectedProject') as string;
+    
+    if (!domainId || !projectId) {
+      toast.error('يرجى اختيار النطاق والمشروع');
+      return;
+    }
+    
+    try {
+      const response = await fetchApi(`/api/domains/${domainId}/connect`, {
+        method: 'POST',
+        body: JSON.stringify({
+          project_id: projectId
+        })
+      });
+      
+      if (response.success) {
+        toast.success('تم ربط النطاق بالمشروع بنجاح');
+        fetchUserDomains(); // Refresh domains list
+      } else {
+        toast.error('فشل في ربط النطاق بالمشروع');
+      }
+    } catch (err) {
+      console.error('Error connecting domain:', err);
+      toast.error('حدث خطأ أثناء ربط النطاق');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/20 text-green-400';
       case 'pending': return 'bg-yellow-500/20 text-yellow-400';
       case 'expired': return 'bg-red-500/20 text-red-400';
+      case 'suspended': return 'bg-orange-500/20 text-orange-400';
+      case 'transferred': return 'bg-blue-500/20 text-blue-400';
       default: return 'bg-slate-500/20 text-slate-400';
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'نشط';
       case 'pending': return 'قيد المعالجة';
       case 'expired': return 'منتهي الصلاحية';
+      case 'suspended': return 'معلق';
+      case 'transferred': return 'تم نقله';
       default: return 'غير معروف';
     }
   };
@@ -76,19 +198,46 @@ export default function Domains() {
   return (
     <DashboardLayout title="إدارة النطاقات" currentPath="/domains">
       <div className="space-y-6 font-cairo">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">إدارة النطاقات المخصصة</h2>
-              <p className="text-blue-100">ابحث واحجز وأدر نطاقاتك المخصصة</p>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-blue-100">النطاقات المملوكة</div>
-              <div className="text-2xl font-bold">{myDomains.length}</div>
-            </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-400">جاري تحميل النطاقات...</p>
           </div>
-        </div>
+        )}
+
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+              <i className="ri-error-warning-line text-2xl text-red-400"></i>
+            </div>
+            <h3 className="text-lg font-semibold text-red-400 mb-2">حدث خطأ</h3>
+            <p className="text-red-300 mb-4">{error}</p>
+            <button
+              onClick={fetchUserDomains}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2">إدارة النطاقات المخصصة</h2>
+                  <p className="text-blue-100">ابحث واحجز وأدر نطاقاتك المخصصة</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-blue-100">النطاقات المملوكة</div>
+                  <div className="text-2xl font-bold">{myDomains.length}</div>
+                </div>
+              </div>
+            </div>
 
         {/* Tabs Navigation */}
         <div className="bg-slate-800 rounded-xl">
@@ -243,7 +392,7 @@ export default function Domains() {
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <h4 className="text-lg font-semibold text-white">{domain.domain}</h4>
+                            <h4 className="text-lg font-semibold text-white">{domain.domain_name}</h4>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(domain.status)}`}>
                               {getStatusText(domain.status)}
                             </span>
@@ -251,16 +400,16 @@ export default function Domains() {
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div>
                               <span className="text-slate-400">انتهاء الصلاحية: </span>
-                              <span className="text-white">{domain.expiresAt}</span>
+                              <span className="text-white">{new Date(domain.expires_at).toLocaleDateString('ar-EG')}</span>
                             </div>
                             <div>
                               <span className="text-slate-400">المشروع المربوط: </span>
-                              <span className="text-white">{domain.connectedProject || 'غير مربوط'}</span>
+                              <span className="text-white">{domain.project_name || 'غير مربوط'}</span>
                             </div>
                             <div>
                               <span className="text-slate-400">التجديد التلقائي: </span>
-                              <span className={domain.autoRenew ? 'text-green-400' : 'text-red-400'}>
-                                {domain.autoRenew ? 'مفعل' : 'معطل'}
+                              <span className={domain.auto_renew ? 'text-green-400' : 'text-red-400'}>
+                                {domain.auto_renew ? 'مفعل' : 'معطل'}
                               </span>
                             </div>
                           </div>
@@ -300,7 +449,7 @@ export default function Domains() {
                         >
                           <option value="">اختر نطاقاً...</option>
                           {myDomains.map((domain) => (
-                            <option key={domain.id} value={domain.domain}>{domain.domain}</option>
+                            <option key={domain.id} value={domain.id}>{domain.domain_name}</option>
                           ))}
                         </select>
                       </div>
@@ -360,6 +509,8 @@ export default function Domains() {
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

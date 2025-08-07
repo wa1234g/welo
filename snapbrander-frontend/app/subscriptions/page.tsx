@@ -1,296 +1,245 @@
-
 'use client';
 
 import DashboardLayout from '@/components/DashboardLayout';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchApi } from '@/utils/api';
+import { toast } from 'react-hot-toast';
+
+interface SubscriptionPlan {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  interval: string;
+  features: string[];
+  is_popular: boolean;
+  is_active: boolean;
+}
+
+interface CurrentSubscription {
+  id: string;
+  plan_id: number;
+  plan_name: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  auto_renew: boolean;
+  price: number;
+  currency: string;
+}
 
 export default function Subscriptions() {
-  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [currentSubscription, setCurrentSubscription] = useState<CurrentSubscription | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const plans = [
-    {
-      id: 'basic',
-      name: 'الأساسي',
-      description: 'مثالي للمشاريع الصغيرة والمدونات الشخصية',
-      monthlyPrice: 299,
-      yearlyPrice: 2990,
-      yearlyDiscount: 588,
-      features: [
-        '5 مشاريع نشطة',
-        '10 قوالب متميزة',
-        '1 GB مساحة تخزين',
-        'نطاق فرعي مجاني',
-        'دعم فني أساسي',
-        'تحديثات تلقائية',
-        'حماية SSL'
-      ],
-      color: 'from-blue-500 to-cyan-500',
-      popular: false
-    },
-    {
-      id: 'professional',
-      name: 'الاحترافي',
-      description: 'الأنسب للشركات الناشئة والمتوسطة',
-      monthlyPrice: 799,
-      yearlyPrice: 7990,
-      yearlyDiscount: 1598,
-      features: [
-        '25 مشروع نشط',
-        'جميع القوالب المتميزة',
-        '10 GB مساحة تخزين',
-        'نطاق مخصص مجاني',
-        'تحسين SEO متقدم',
-        'إضافات بريميوم',
-        'دعم فني أولوية',
-        'نسخ احتياطية يومية'
-      ],
-      color: 'from-purple-500 to-pink-500',
-      popular: true
-    },
-    {
-      id: 'enterprise',
-      name: 'الشركات',
-      description: 'حلول شاملة للشركات الكبيرة',
-      monthlyPrice: 1999,
-      yearlyPrice: 19990,
-      yearlyDiscount: 3998,
-      features: [
-        'مشاريع غير محدودة',
-        'جميع القوالب + حصرية',
-        '100 GB مساحة تخزين',
-        'نطاقات متعددة مخصصة',
-        'تحليلات متقدمة',
-        'فريق تطوير مخصص',
-        'دعم فني مباشر 24/7',
-        'تخصيص كامل للمنصة'
-      ],
-      color: 'from-amber-500 to-orange-500',
-      popular: false
+  useEffect(() => {
+    fetchSubscriptionPlans();
+    fetchCurrentSubscription();
+  }, []);
+
+  const fetchSubscriptionPlans = async () => {
+    try {
+      const response = await fetchApi('/api/subscriptions/plans', {}, false);
+      
+      if (response.success) {
+        setPlans(response.data.plans);
+      } else {
+        setError('فشل في جلب خطط الاشتراك');
+      }
+    } catch (err) {
+      console.error('Error fetching subscription plans:', err);
     }
-  ];
-
-  const currentSubscription = {
-    plan: 'professional',
-    status: 'active',
-    nextBilling: '2024-02-15',
-    amount: 799
   };
 
-  const getPrice = (plan) => {
-    return billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
+  const fetchCurrentSubscription = async () => {
+    try {
+      const response = await fetchApi('/api/subscriptions/current');
+      
+      if (response.success && response.data.subscription) {
+        setCurrentSubscription(response.data.subscription);
+      }
+    } catch (err) {
+      console.error('Error fetching current subscription:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getSavings = (plan) => {
-    return billingCycle === 'yearly' ? plan.yearlyDiscount : 0;
+  const handleSubscribe = async (planId: number) => {
+    try {
+      const response = await fetchApi('/api/payments/create-order', {
+        method: 'POST',
+        body: JSON.stringify({
+          subscription_id: planId,
+          amount: plans.find(p => p.id === planId)?.price || 0,
+          currency: 'EGP'
+        })
+      });
+      
+      if (response.success) {
+        window.location.href = response.data.payment_url;
+      } else {
+        toast.error('فشل في إنشاء طلب الدفع');
+      }
+    } catch (err) {
+      console.error('Error creating payment order:', err);
+      toast.error('حدث خطأ أثناء إنشاء طلب الدفع');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500/20 text-green-400';
+      case 'pending': return 'bg-yellow-500/20 text-yellow-400';
+      case 'expired': return 'bg-red-500/20 text-red-400';
+      case 'canceled': return 'bg-slate-500/20 text-slate-400';
+      default: return 'bg-slate-500/20 text-slate-400';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'active': return 'نشط';
+      case 'pending': return 'قيد المعالجة';
+      case 'expired': return 'منتهي الصلاحية';
+      case 'canceled': return 'ملغي';
+      default: return 'غير معروف';
+    }
   };
 
   return (
     <DashboardLayout title="الاشتراكات والخطط" currentPath="/subscriptions">
       <div className="space-y-8 font-cairo">
-        {/* Current Subscription Status */}
-        <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl p-6 text-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">اشتراكك الحالي</h2>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <i className="ri-vip-crown-line text-yellow-300"></i>
-                  <span className="font-semibold">خطة الاحترافي</span>
-                  <span className="bg-green-500 px-2 py-1 rounded-full text-xs">نشط</span>
-                </div>
-                <p className="text-green-100">التجديد التالي: {currentSubscription.nextBilling}</p>
-                <p className="text-green-100">المبلغ: {currentSubscription.amount} جنيه شهرياً</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <Link
-                href="/payment/invoice"
-                className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm whitespace-nowrap"
-              >
-                عرض الفاتورة
-              </Link>
-            </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-400">جاري تحميل الاشتراكات...</p>
           </div>
-        </div>
+        )}
 
-        {/* Billing Toggle */}
-        <div className="text-center">
-          <div className="inline-flex bg-slate-800 rounded-lg p-1">
+        {/* Error State */}
+        {error && !loading && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+              <i className="ri-error-warning-line text-2xl text-red-400"></i>
+            </div>
+            <h3 className="text-lg font-semibold text-red-400 mb-2">حدث خطأ</h3>
+            <p className="text-red-300 mb-4">{error}</p>
             <button
-              onClick={() => setBillingCycle('monthly')}
-              className={`px-6 py-2 rounded-md font-medium transition-all whitespace-nowrap ${
-                billingCycle === 'monthly'
-                  ? 'bg-purple-600 text-white'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              onClick={fetchSubscriptionPlans}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
             >
-              شهرياً
-            </button>
-            <button
-              onClick={() => setBillingCycle('yearly')}
-              className={`px-6 py-2 rounded-md font-medium transition-all relative whitespace-nowrap ${
-                billingCycle === 'yearly'
-                  ? 'bg-purple-600 text-white'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              سنوياً
-              <span className="absolute -top-2 -right-1 bg-green-500 text-white text-xs px-1 rounded">
-                وفر 20%
-              </span>
+              إعادة المحاولة
             </button>
           </div>
-        </div>
+        )}
 
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative bg-slate-800 rounded-2xl p-6 transition-all transform hover:scale-105 ${
-                plan.popular
-                  ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
-                  : 'hover:shadow-xl'
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                    الأكثر شعبية
-                  </span>
-                </div>
-              )}
-
-              <div className="text-center mb-6">
-                <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${plan.color} flex items-center justify-center`}>
-                  <i className="ri-vip-crown-line text-2xl text-white"></i>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-slate-400 text-sm">{plan.description}</p>
-              </div>
-
-              <div className="text-center mb-6">
-                <div className="text-4xl font-bold text-white mb-2">
-                  {getPrice(plan).toLocaleString()}
-                  <span className="text-lg text-slate-400 font-normal"> جنيه</span>
-                </div>
-                <div className="text-slate-400 text-sm">
-                  {billingCycle === 'yearly' ? 'سنوياً' : 'شهرياً'}
-                </div>
-                {getSavings(plan) > 0 && (
-                  <div className="text-green-400 text-sm mt-1">
-                    وفر {getSavings(plan)} جنيه سنوياً
+        {!loading && !error && (
+          <>
+            {/* Current Subscription Status */}
+            {currentSubscription && (
+              <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-xl p-6 text-white">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold mb-2">اشتراكك الحالي</h2>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <i className="ri-vip-crown-line text-yellow-300"></i>
+                        <span className="font-semibold">{currentSubscription.plan_name}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentSubscription.status)}`}>
+                          {getStatusText(currentSubscription.status)}
+                        </span>
+                      </div>
+                      <p className="text-green-100">التجديد التالي: {new Date(currentSubscription.end_date).toLocaleDateString('ar-EG')}</p>
+                      <p className="text-green-100">المبلغ: {currentSubscription.price} {currentSubscription.currency} شهرياً</p>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-3 text-slate-300 text-sm">
-                    <i className="ri-check-line text-green-400 text-lg"></i>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="space-y-3">
-                {currentSubscription.plan === plan.id ? (
-                  <div className="w-full bg-green-600 text-white py-3 px-6 rounded-lg text-center font-medium">
-                    <i className="ri-check-line mr-2"></i>
-                    خطتك الحالية
+                  <div className="text-right">
+                    <Link
+                      href="/payment/invoice"
+                      className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-all text-sm whitespace-nowrap"
+                    >
+                      عرض الفاتورة
+                    </Link>
                   </div>
-                ) : (
-                  <Link
-                    href={`/payment?plan=${plan.id}`}
-                    className={`block w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white py-3 px-6 rounded-lg text-center font-medium transition-all whitespace-nowrap`}
-                  >
-                    {currentSubscription.plan === 'basic' && plan.id !== 'basic' ? 'ترقية' : 'اختيار الخطة'}
-                  </Link>
-                )}
-                {plan.id !== 'basic' && (
-                  <button className="w-full border border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white py-2 px-6 rounded-lg text-center transition-all text-sm whitespace-nowrap">
-                    مقارنة تفصيلية
-                  </button>
-                )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            )}
 
-        {/* Features Comparison */}
-        <div className="bg-slate-800 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-6 text-center">مقارنة شاملة للخطط</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-right py-4 text-slate-300 font-medium">المميزات</th>
-                  <th className="text-center py-4 text-slate-300 font-medium">الأساسي</th>
-                  <th className="text-center py-4 text-slate-300 font-medium">الاحترافي</th>
-                  <th className="text-center py-4 text-slate-300 font-medium">الشركات</th>
-                </tr>
-              </thead>
-              <tbody className="text-slate-300">
-                <tr className="border-b border-slate-700/50">
-                  <td className="py-3">عدد المشاريع</td>
-                  <td className="py-3 text-center">5</td>
-                  <td className="py-3 text-center">25</td>
-                  <td className="py-3 text-center">غير محدود</td>
-                </tr>
-                <tr className="border-b border-slate-700/50">
-                  <td className="py-3">مساحة التخزين</td>
-                  <td className="py-3 text-center">1 GB</td>
-                  <td className="py-3 text-center">10 GB</td>
-                  <td className="py-3 text-center">100 GB</td>
-                </tr>
-                <tr className="border-b border-slate-700/50">
-                  <td className="py-3">القوالب</td>
-                  <td className="py-3 text-center">10 قالب</td>
-                  <td className="py-3 text-center">جميع القوالب</td>
-                  <td className="py-3 text-center">جميع + حصرية</td>
-                </tr>
-                <tr className="border-b border-slate-700/50">
-                  <td className="py-3">الدعم الفني</td>
-                  <td className="py-3 text-center">أساسي</td>
-                  <td className="py-3 text-center">أولوية</td>
-                  <td className="py-3 text-center">مباشر 24/7</td>
-                </tr>
-                <tr className="border-b border-slate-700/50">
-                  <td className="py-3">النطاق المخصص</td>
-                  <td className="py-3 text-center"><i className="ri-close-line text-red-400"></i></td>
-                  <td className="py-3 text-center"><i className="ri-check-line text-green-400"></i></td>
-                  <td className="py-3 text-center">متعدد</td>
-                </tr>
-                <tr>
-                  <td className="py-3">تحليلات متقدمة</td>
-                  <td className="py-3 text-center"><i className="ri-close-line text-red-400"></i></td>
-                  <td className="py-3 text-center"><i className="ri-check-line text-green-400"></i></td>
-                  <td className="py-3 text-center"><i className="ri-check-line text-green-400"></i></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+            {/* Plans Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {plans.map((plan) => (
+                <div
+                  key={plan.id}
+                  className={`relative bg-slate-800 rounded-2xl p-6 transition-all transform hover:scale-105 ${
+                    plan.is_popular
+                      ? 'ring-2 ring-purple-500 shadow-lg shadow-purple-500/20'
+                      : 'hover:shadow-xl'
+                  }`}
+                >
+                  {plan.is_popular && (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <span className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1 rounded-full text-sm font-medium">
+                        الأكثر شعبية
+                      </span>
+                    </div>
+                  )}
 
-        {/* FAQ */}
-        <div className="bg-slate-800 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-6">أسئلة شائعة</h3>
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium text-white mb-2">هل يمكنني تغيير خطتي في أي وقت؟</h4>
-              <p className="text-slate-400 text-sm">نعم، يمكنك ترقية أو تخفيض خطتك في أي وقت. سيتم احتساب الفرق تناسبياً.</p>
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+                      <i className="ri-vip-crown-line text-2xl text-white"></i>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                    <p className="text-slate-400 text-sm">{plan.description}</p>
+                  </div>
+
+                  <div className="text-center mb-6">
+                    <div className="text-4xl font-bold text-white mb-2">
+                      {plan.price.toLocaleString()}
+                      <span className="text-lg text-slate-400 font-normal"> {plan.currency}</span>
+                    </div>
+                    <div className="text-slate-400 text-sm">
+                      {plan.interval === 'yearly' ? 'سنوياً' : 'شهرياً'}
+                    </div>
+                  </div>
+
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-center gap-3 text-slate-300 text-sm">
+                        <i className="ri-check-line text-green-400 text-lg"></i>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="space-y-3">
+                    {currentSubscription && currentSubscription.plan_id === plan.id ? (
+                      <div className="w-full bg-green-600 text-white py-3 px-6 rounded-lg text-center font-medium">
+                        <i className="ri-check-line mr-2"></i>
+                        خطتك الحالية
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleSubscribe(plan.id)}
+                        className="block w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 text-white py-3 px-6 rounded-lg text-center font-medium transition-all whitespace-nowrap"
+                      >
+                        اختيار الخطة
+                      </button>
+                    )}
+                    <button className="w-full border border-slate-600 hover:border-slate-500 text-slate-400 hover:text-white py-2 px-6 rounded-lg text-center transition-all text-sm whitespace-nowrap">
+                      مقارنة تفصيلية
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <h4 className="font-medium text-white mb-2">ماذا يحدث عند انتهاء الاشتراك؟</h4>
-              <p className="text-slate-400 text-sm">ستحصل على فترة سماح 7 أيام، ثم ستنتقل لخطة مجانية محدودة المميزات.</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-white mb-2">هل توجد رسوم إلغاء؟</h4>
-              <p className="text-slate-400 text-sm">لا توجد رسوم إلغاء، يمكنك إلغاء اشتراكك في أي وقت من لوحة التحكم.</p>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

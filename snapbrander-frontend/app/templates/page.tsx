@@ -4,6 +4,8 @@
 import DashboardLayout from '@/components/DashboardLayout';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { fetchApi } from '@/utils/api';
+import { toast } from 'react-hot-toast';
 
 interface Template {
   id: number;
@@ -37,34 +39,25 @@ export default function Templates() {
   const fetchTemplates = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/templates/', {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetchApi('/api/templates/', {}, false);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          const templatesData = data.data.templates.map((template: any) => ({
-            id: template.id,
-            name: template.name,
-            category: template.category,
-            description: template.description_ar || template.description,
-            image: template.preview_image,
-            price: template.price > 0 ? 'مدفوع' : 'مجاني',
-            downloads: template.downloads_count,
-            rating: template.rating,
-            tags: template.tags ? JSON.parse(template.tags) : [],
-            featured: template.is_featured,
-            demo: template.demo_url
-          }));
-          setTemplates(templatesData);
-        } else {
-          setError('فشل في تحميل القوالب');
-        }
+      if (response.success) {
+        const templatesData = response.data.templates.map((template: any) => ({
+          id: template.id,
+          name: template.name,
+          category: template.category,
+          description: template.description_ar || template.description,
+          image: template.preview_image,
+          price: template.price > 0 ? 'مدفوع' : 'مجاني',
+          downloads: template.downloads_count,
+          rating: template.rating,
+          tags: template.tags ? JSON.parse(template.tags) : [],
+          featured: template.is_featured,
+          demo: template.demo_url
+        }));
+        setTemplates(templatesData);
       } else {
-        setError('فشل في الاتصال بالخادم');
+        setError('فشل في تحميل القوالب');
       }
     } catch (err) {
       setError('حدث خطأ في تحميل القوالب');
@@ -76,38 +69,31 @@ export default function Templates() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/templates/categories', {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await fetchApi('/api/templates/categories', {}, false);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          const categoryNames: { [key: string]: string } = {
-            'business': 'أعمال',
-            'ecommerce': 'تجارة إلكترونية',
-            'portfolio': 'معرض أعمال',
-            'restaurant': 'مطعم',
-            'blog': 'مدونة'
-          };
-          
-          const categoriesData = [
-            { id: 'all', name: 'الكل', count: templates.length }
-          ];
-          
-          data.data.categories.forEach((cat: string) => {
-            const count = templates.filter(t => t.category === cat).length;
-            categoriesData.push({
-              id: cat,
-              name: categoryNames[cat] || cat,
-              count: count
-            });
+      if (response.success) {
+        const categoryNames: { [key: string]: string } = {
+          'business': 'أعمال',
+          'ecommerce': 'تجارة إلكترونية',
+          'portfolio': 'معرض أعمال',
+          'restaurant': 'مطعم',
+          'blog': 'مدونة'
+        };
+        
+        const categoriesData = [
+          { id: 'all', name: 'الكل', count: templates.length }
+        ];
+        
+        response.data.categories.forEach((cat: string) => {
+          const count = templates.filter(t => t.category === cat).length;
+          categoriesData.push({
+            id: cat,
+            name: categoryNames[cat] || cat,
+            count: count
           });
-          
-          setCategories(categoriesData);
-        }
+        });
+        
+        setCategories(categoriesData);
       }
     } catch (err) {
       console.error('Error fetching categories:', err);
