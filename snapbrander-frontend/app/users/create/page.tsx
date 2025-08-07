@@ -15,7 +15,7 @@ export default function CreateUser() {
     status: 'active',
     password: '',
     confirmPassword: '',
-    permissions: [],
+    permissions: [] as string[],
     department: '',
     position: ''
   });
@@ -37,7 +37,7 @@ export default function CreateUser() {
     { id: 'view_analytics', name: 'عرض التحليلات', category: 'النظام' }
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       alert('كلمات المرور غير متطابقة');
@@ -46,7 +46,7 @@ export default function CreateUser() {
     alert('تم إنشاء المستخدم بنجاح!');
   };
 
-  const handleRoleChange = (roleId) => {
+  const handleRoleChange = (roleId: string) => {
     setFormData({...formData, role: roleId});
     
     // Auto-assign permissions based on role

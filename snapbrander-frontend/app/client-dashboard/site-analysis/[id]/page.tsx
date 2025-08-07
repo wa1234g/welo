@@ -85,13 +85,13 @@ export default function SiteAnalysisPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  const getScoreColor = (score) => {
+  const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-400 bg-green-500/20';
     if (score >= 70) return 'text-yellow-400 bg-yellow-500/20';
     return 'text-red-400 bg-red-500/20';
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/20 text-green-400';
       case 'inactive': return 'bg-red-500/20 text-red-400';

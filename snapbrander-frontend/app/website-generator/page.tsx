@@ -14,9 +14,9 @@ export default function WebsiteGenerator() {
     description: '',
     colors: { primary: '#6366f1', secondary: '#8b5cf6' },
     logo: null,
-    features: [],
+    features: [] as string[],
     template: '',
-    services: []
+    services: [] as Array<{id: number; name: string; description: string}>
   });
 
   const [currentService, setCurrentService] = useState({ name: '', description: '' });
@@ -102,14 +102,14 @@ export default function WebsiteGenerator() {
     }
   };
 
-  const removeService = (serviceId) => {
+  const removeService = (serviceId: number) => {
     setFormData({
       ...formData,
       services: formData.services.filter(service => service.id !== serviceId)
     });
   };
 
-  const enhanceWithAI = async (text, type) => {
+  const enhanceWithAI = async (text: string, type: string) => {
     // محاكاة تحسين المحتوى بالذكاء الاصطناعي
     const enhanced = `${text} - تم تحسينه بالذكاء الاصطناعي لجعله أكثر جاذبية واحترافية وملائماً لمحركات البحث`;
     

@@ -42,13 +42,13 @@ function PaymentContent() {
     }
   };
 
-  const selectedPlan = plans[planId];
+  const selectedPlan = plans[planId as keyof typeof plans];
   const finalPrice = billingCycle === 'yearly' 
     ? selectedPlan.yearlyPrice 
     : selectedPlan.monthlyPrice;
   const discount = billingCycle === 'yearly' ? (selectedPlan.monthlyPrice * 12 - selectedPlan.yearlyPrice) : 0;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Redirect to invoice page with payment data
     const paymentData = {

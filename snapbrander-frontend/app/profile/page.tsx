@@ -46,12 +46,12 @@ export default function ProfilePage() {
     }
   });
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ar-SA');
   };
 
-  const getInitials = (name) => {
-    return name.split(' ').map(word => word.charAt(0)).join('').substring(0, 2);
+  const getInitials = (name: string) => {
+    return name.split(' ').map((word: string) => word.charAt(0)).join('').substring(0, 2);
   };
 
   return (

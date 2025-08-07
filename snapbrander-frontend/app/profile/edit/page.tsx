@@ -32,11 +32,11 @@ export default function EditProfilePage() {
     timezone: 'Asia/Riyadh'
   });
 
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [showSuccess, setShowSuccess] = useState(false);
 
   const validateForm = () => {
-    const newErrors = {};
+    const newErrors: {[key: string]: string} = {};
     
     if (!formData.name.trim()) {
       newErrors.name = 'الاسم مطلوب';
@@ -65,7 +65,7 @@ export default function EditProfilePage() {
     return newErrors;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrors({});
@@ -93,17 +93,19 @@ export default function EditProfilePage() {
     }
   };
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData({ ...formData, [field]: value });
     if (errors[field]) {
-      setErrors({ ...errors, [field]: null });
+      const newErrors = { ...errors };
+      delete newErrors[field];
+      setErrors(newErrors);
     }
   };
 
-  const handleNestedChange = (parent, field, value) => {
+  const handleNestedChange = (parent: string, field: string, value: any) => {
     setFormData({
       ...formData,
-      [parent]: { ...formData[parent], [field]: value }
+      [parent]: { ...(formData as any)[parent], [field]: value }
     });
   };
 

@@ -14,7 +14,7 @@ export default function CreateTemplate() {
     price: 'free',
     demoUrl: '',
     downloadUrl: '',
-    features: []
+    features: [] as string[]
   });
 
   const categories = [
@@ -35,7 +35,7 @@ export default function CreateTemplate() {
     { id: 'contact', name: 'نماذج اتصال', icon: 'ri-mail-line' }
   ];
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     alert('تم إنشاء القالب بنجاح! سيتم مراجعته قبل النشر');
   };

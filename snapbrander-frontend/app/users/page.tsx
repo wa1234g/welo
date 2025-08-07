@@ -68,7 +68,7 @@ export default function Users() {
     }
   ];
 
-  const getRoleColor = (role) => {
+  const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin': return 'bg-red-500/20 text-red-400';
       case 'editor': return 'bg-blue-500/20 text-blue-400';
@@ -77,7 +77,7 @@ export default function Users() {
     }
   };
 
-  const getRoleText = (role) => {
+  const getRoleText = (role: string) => {
     switch (role) {
       case 'admin': return 'مدير';
       case 'editor': return 'محرر';
@@ -86,7 +86,7 @@ export default function Users() {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500/20 text-green-400';
       case 'inactive': return 'bg-yellow-500/20 text-yellow-400';
@@ -96,7 +96,7 @@ export default function Users() {
     }
   };
 
-  const getStatusText = (status) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'نشط';
       case 'inactive': return 'غير نشط';
