@@ -60,9 +60,18 @@ export default function CpanelManagement() {
   const fetchClientSites = async () => {
     try {
       setLoading(true);
-      setSites([]);
+      const response = await fetchApi('/api/cpanel/client-sites', {
+        method: 'GET'
+      }, true);
+      
+      if (response.success) {
+        setSites(response.data || []);
+      } else {
+        toast.error('فشل في جلب مواقع العملاء');
+      }
     } catch (err) {
       console.error('Error fetching client sites:', err);
+      toast.error('فشل في جلب مواقع العملاء');
     } finally {
       setLoading(false);
     }
@@ -80,7 +89,7 @@ export default function CpanelManagement() {
       const response = await fetchApi('/api/cpanel/create-client-site', {
         method: 'POST',
         body: JSON.stringify(formData)
-      });
+      }, true);
 
       if (response.success) {
         toast.success('تم إنشاء موقع العميل بنجاح!');
