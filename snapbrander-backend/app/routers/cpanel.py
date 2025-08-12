@@ -40,7 +40,7 @@ class CpanelManager:
                 "dir": f"public_html/clients/{project_id}_{subdomain}"
             }
             
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, verify=False)
             return response.json()
         except Exception as e:
             if self.dev_mode:
@@ -77,7 +77,7 @@ class CpanelManager:
             full_db_name = f"{self.cpanel_user}_{db_name}_{project_id}"
             data = {"name": full_db_name}
             
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, verify=False)
             
             if response.status_code == 200:
                 db_user = f"{self.cpanel_user}_{db_name}_user"
