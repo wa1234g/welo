@@ -191,7 +191,7 @@ export default function CpanelManagement() {
                       placeholder="client-name"
                       className="w-full px-4 py-3 bg-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     />
-                    <p className="text-xs text-slate-400 mt-1">سيصبح: {formData.subdomain || 'client-name'}.snapbrander.com</p>
+                    <p className="text-xs text-slate-400 mt-1">سيصبح: {formData.subdomain || 'client-name'}.fureraa.com</p>
                   </div>
 
                   <div>

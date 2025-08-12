@@ -87,7 +87,7 @@ export default function CreateProject() {
           description: formData.description,
           business_type: formData.category,
           template_id: parseInt(formData.template) || null,
-          domain: formData.domain || `${formData.name.toLowerCase().replace(/\s+/g, '-')}.snapbrander.com`,
+          domain: formData.domain || `${formData.name.toLowerCase().replace(/\s+/g, '-')}.fureraa.com`,
           settings: {
             features: formData.features,
             hosting: formData.hosting
@@ -105,7 +105,7 @@ export default function CreateProject() {
           method: 'POST',
           body: JSON.stringify({
             project_id: projectId,
-            domain: formData.domain || `${formData.name.toLowerCase().replace(/\s+/g, '-')}.snapbrander.com`,
+            domain: formData.domain || `${formData.name.toLowerCase().replace(/\s+/g, '-')}.fureraa.com`,
             admin_password: 'admin123456',
             site_title: formData.name,
             admin_username: 'admin'
@@ -158,7 +158,7 @@ export default function CreateProject() {
                   value={formData.domain}
                   onChange={(e) => setFormData({...formData, domain: e.target.value})}
                   className="w-full px-4 py-3 bg-slate-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                  placeholder="myproject.snapbrander.com"
+                  placeholder="myproject.fureraa.com"
                 />
               </div>
             </div>

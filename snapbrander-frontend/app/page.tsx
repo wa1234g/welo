@@ -67,21 +67,21 @@ export default function Dashboard() {
     {
       id: 1,
       name: 'walid',
-      url: 'snapbrander.com',
+      url: 'fureraa.com',
       status: 'قيد التطوير',
       date: 'منذ يومين'
     },
     {
       id: 2,
       name: 'موقع تسويقي',
-      url: 'snapbrander.com',
+      url: 'fureraa.com',
       status: 'قيد التطوير', 
       date: 'منذ 3 أيام'
     },
     {
       id: 3,
       name: 'متجر إلكتروني',
-      url: 'snapbrander.com',
+      url: 'fureraa.com',
       status: 'قيد التطوير',
       date: 'منذ أسبوع'
     }
